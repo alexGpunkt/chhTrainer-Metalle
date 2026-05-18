@@ -1,0 +1,582 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans, Arial, sans-serif); background: var(--color-background-secondary, #F4F7F6); color: var(--color-text-primary, #17201C); }
+.app { padding: 1.5rem 0; max-width: 900px; margin: 0 auto; }
+.header { margin-bottom: 1.5rem; }
+.header h1 { font-size: 20px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
+.header p { font-size: 14px; color: var(--color-text-secondary); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.5rem; align-items: center; }
+.cat-btn { font-size: 13px; padding: 6px 14px; border-radius: 20px; border: 0.5px solid var(--color-border-secondary, #CAD6D2); background: var(--color-background-primary, #FFFFFF); color: var(--color-text-secondary, #52645E); cursor: pointer; transition: all 0.15s; }
+.cat-btn.active { background: #1D9E75; border-color: #1D9E75; color: #fff; }
+.progress { margin-bottom: 1rem; display: flex; align-items: center; gap: 12px; }
+.prog-bar { flex: 1; height: 6px; background: var(--color-background-secondary); border-radius: 3px; overflow: hidden; }
+.prog-fill { height: 100%; background: #1D9E75; border-radius: 3px; transition: width 0.3s; }
+.prog-text { font-size: 13px; color: var(--color-text-secondary); min-width: 60px; text-align: right; }
+.card-area { display: flex; justify-content: center; margin-bottom: 1.5rem; }
+.card-wrapper { width: 100%; max-width: 600px; min-height: 290px; height: auto; perspective: 1200px; cursor: pointer; }
+.card-inner { width: 100%; min-height: 290px; position: relative; transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.4,0.2,0.2,1); will-change: transform; }
+.card-inner.flipped { transform: rotateY(180deg); }
+.card-face { position: absolute; inset: 0; border-radius: var(--border-radius-lg, 18px); border: 1px solid var(--color-border-tertiary, #D7E1DD); -webkit-backface-visibility: hidden; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; box-shadow: 0 14px 35px rgba(20, 55, 45, 0.14); overflow: hidden; }
+.card-front { background: linear-gradient(145deg, #FFFFFF 0%, #EAF7F2 100%); transform: rotateY(0deg) translateZ(1px); }
+.card-back { background: linear-gradient(145deg, #FFFFFF 0%, #EAF1FB 100%); transform: rotateY(180deg) translateZ(1px); }
+.card-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-tertiary); margin-bottom: 12px; }
+.card-front .card-label { color: #0F6E56; }
+.card-back .card-label { color: #185FA5; }
+.card-category { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: 20px; margin-bottom: 14px; }
+.card-question { font-size: 18px; font-weight: 500; color: var(--color-text-primary); line-height: 1.45; }
+.card-answer { font-size: 16px; color: var(--color-text-primary); line-height: 1.55; }
+.card-hint { font-size: 13px; color: var(--color-text-secondary); margin-top: 10px; }
+.flip-hint { font-size: 12px; color: var(--color-text-tertiary); margin-top: 14px; display: flex; align-items: center; gap: 5px; }
+.nav-row { display: flex; justify-content: center; align-items: center; gap: 12px; }
+.nav-btn { display: flex; align-items: center; gap: 6px; font-size: 14px; padding: 8px 20px; border-radius: var(--border-radius-md, 12px); border: 0.5px solid var(--color-border-secondary, #CAD6D2); background: var(--color-background-primary, #FFFFFF); color: var(--color-text-primary, #17201C); cursor: pointer; transition: all 0.15s; }
+.nav-btn:hover { background: var(--color-background-secondary); }
+.nav-btn:disabled { opacity: 0.35; cursor: default; }
+.card-counter { font-size: 14px; color: var(--color-text-secondary); min-width: 60px; text-align: center; }
+.shuffle-btn { font-size: 13px; padding: 7px 14px; border-radius: var(--border-radius-md, 12px); border: 0.5px solid var(--color-border-secondary, #CAD6D2); background: var(--color-background-primary, #FFFFFF); color: var(--color-text-secondary, #52645E); cursor: pointer; }
+.shuffle-btn:hover { background: var(--color-background-secondary); }
+.known-row { display: flex; justify-content: center; gap: 10px; margin-top: 1.2rem; }
+.known-btn { font-size: 13px; padding: 7px 18px; border-radius: var(--border-radius-md); border: 0.5px solid; cursor: pointer; transition: all 0.15s; background: transparent; }
+.known-btn.yes { border-color: #1D9E75; color: #1D9E75; }
+.known-btn.yes:hover { background: #E1F5EE; }
+.known-btn.no { border-color: #D85A30; color: #D85A30; }
+.known-btn.no:hover { background: #FAECE7; }
+.status-row { display: flex; justify-content: center; gap: 16px; margin-bottom: 1.5rem; font-size: 13px; color: var(--color-text-secondary); }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+@media (max-width: 640px) { .app { padding: 1rem 0.75rem; } .card-wrapper, .card-inner { min-height: 330px; } .card-face { padding: 1.35rem; } .card-question { font-size: 17px; } .card-answer { font-size: 15px; } .nav-row { flex-wrap: wrap; } }
+@media (prefers-reduced-motion: reduce) { .card-inner { transition: none; } }
+</style>
+
+<div class="app">
+  <h2 class="sr-only">Chemie Lernkarten – Thema Metalle, Klasse 8</h2>
+  <div class="header">
+    <h1>⚗ Chemie – Metalle</h1>
+    <p>Klicke auf die Karte, um die Antwort zu sehen</p>
+  </div>
+
+  <div class="controls" id="catControls"></div>
+
+  <div class="status-row">
+    <span><span class="status-dot" style="background:#1D9E75"></span><span id="knownCount">0</span> gewusst</span>
+    <span><span class="status-dot" style="background:#D85A30"></span><span id="unknownCount">0</span> nochmal</span>
+    <span><span class="status-dot" style="background:var(--color-border-secondary)"></span><span id="openCount">0</span> offen</span>
+  </div>
+
+  <div class="progress">
+    <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+    <div class="prog-text" id="progText">0 %</div>
+  </div>
+
+  <div class="card-area">
+    <div class="card-wrapper" id="cardWrapper" onclick="flipCard()">
+      <div class="card-inner" id="cardInner">
+        <div class="card-face card-front">
+          <div class="card-label">Frage</div>
+          <span class="card-category" id="catLabel" style="background:#E1F5EE;color:#0F6E56"></span>
+          <div class="card-question" id="questionText"></div>
+          <div class="flip-hint"><i class="ti ti-rotate-clockwise" aria-hidden="true" style="font-size:14px"></i> Karte umdrehen</div>
+        </div>
+        <div class="card-face card-back">
+          <div class="card-label">Antwort</div>
+          <div class="card-answer" id="answerText"></div>
+          <div class="card-hint" id="hintText"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="known-row" id="knownRow" style="visibility:hidden">
+    <button type="button" class="known-btn no" onclick="markCard(false)"><i class="ti ti-x" aria-hidden="true"></i> Nochmal</button>
+    <button type="button" class="known-btn yes" onclick="markCard(true)"><i class="ti ti-check" aria-hidden="true"></i> Gewusst</button>
+  </div>
+
+  <div class="nav-row" style="margin-top:1.2rem">
+    <button type="button" class="nav-btn" id="prevBtn" onclick="navigate(-1)" disabled><i class="ti ti-chevron-left" aria-hidden="true"></i> Zurück</button>
+    <span class="card-counter" id="cardCounter">1 / 1</span>
+    <button type="button" class="nav-btn" id="nextBtn" onclick="navigate(1)">Weiter <i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+  </div>
+  <div style="display:flex;justify-content:center;margin-top:10px">
+    <button type="button" class="shuffle-btn" onclick="shuffle()"><i class="ti ti-arrows-shuffle" aria-hidden="true"></i> Mischen</button>
+  </div>
+</div>
+
+<script>
+const ALL_CARDS = [
+  {
+    "cat": "Eigenschaften",
+    "q": "Nenne vier typische Eigenschaften von Metallen.",
+    "a": "Viele Metalle glänzen, leiten elektrischen Strom, leiten Wärme gut und sind verformbar. Außerdem haben viele Metalle eine eher hohe Dichte und hohe Schmelztemperaturen.",
+    "hint": "Merke: glänzend – leitend – verformbar – oft fest."
+  },
+  {
+    "cat": "Eigenschaften",
+    "q": "Was bedeutet Verformbarkeit bei Metallen?",
+    "a": "Metalle können oft gebogen, gehämmert oder zu Drähten gezogen werden, ohne sofort zu zerbrechen. Fachwörter sind: duktil, schmiedbar oder verformbar.",
+    "hint": "Beispiel: Kupferdraht, Aluminiumfolie."
+  },
+  {
+    "cat": "Eigenschaften",
+    "q": "Warum leiten Metalle elektrischen Strom?",
+    "a": "In Metallen gibt es frei bewegliche Elektronen. Diese Elektronen können elektrische Ladung durch das Metall transportieren.",
+    "hint": "Schlüsselwort: Elektronengas-Modell."
+  },
+  {
+    "cat": "Eigenschaften",
+    "q": "Warum leiten Metalle Wärme gut?",
+    "a": "Die frei beweglichen Elektronen und die dicht gepackten Metallteilchen geben Bewegungsenergie schnell weiter. Deshalb erwärmen sich Metallgegenstände oft schnell.",
+    "hint": "Alltagsbeispiel: Metalllöffel in heißem Tee."
+  },
+  {
+    "cat": "Eigenschaften",
+    "q": "Welches Metall ist bei Raumtemperatur flüssig?",
+    "a": "Quecksilber (Hg) ist bei Raumtemperatur flüssig. Es ist giftig und darf im Unterricht nicht offen verwendet werden.",
+    "hint": "Gallium schmilzt knapp über Raumtemperatur, z. B. in der warmen Hand."
+  },
+  {
+    "cat": "Eigenschaften",
+    "q": "Was ist der Unterschied zwischen Eisenmetallen und Nichteisenmetallen?",
+    "a": "Eisenmetalle enthalten Eisen als wichtigen Bestandteil, zum Beispiel Stahl. Nichteisenmetalle enthalten kein Eisen als Hauptbestandteil, zum Beispiel Aluminium, Kupfer oder Zink.",
+    "hint": "Nicht jedes Metall ohne Eisen ist automatisch gut magnetisierbar."
+  },
+  {
+    "cat": "Metallbindung",
+    "q": "Was beschreibt das Elektronengas-Modell?",
+    "a": "Metallatome geben Außenelektronen teilweise frei. Zurück bleiben positiv geladene Metall-Ionen im Metallgitter. Die frei beweglichen Elektronen bilden das sogenannte Elektronengas.",
+    "hint": "Dieses Modell erklärt Leitfähigkeit und Verformbarkeit."
+  },
+  {
+    "cat": "Metallbindung",
+    "q": "Was ist ein Metallgitter?",
+    "a": "Im Metallgitter sind Metallteilchen regelmäßig und dicht angeordnet. Zwischen ihnen bewegen sich freie Elektronen.",
+    "hint": "Gitter bedeutet: regelmäßige Anordnung von Teilchen."
+  },
+  {
+    "cat": "Metallbindung",
+    "q": "Warum brechen Metalle beim Verformen oft nicht sofort?",
+    "a": "Die Schichten im Metallgitter können gegeneinander verschoben werden. Das Elektronengas hält die Teilchen trotzdem zusammen.",
+    "hint": "Anders als bei vielen Salzkristallen."
+  },
+  {
+    "cat": "Metallbindung",
+    "q": "Was ist eine Metallbindung?",
+    "a": "Die Metallbindung ist die Anziehung zwischen positiv geladenen Metall-Ionen im Gitter und frei beweglichen Elektronen.",
+    "hint": "Metallbindung = Metall-Ionen + Elektronengas."
+  },
+  {
+    "cat": "Metallgewinnung",
+    "q": "Aus welchen Ausgangsstoffen werden viele Metalle gewonnen?",
+    "a": "Viele Metalle werden aus Erzen gewonnen. Erze sind Gesteine oder Mineralien, die genügend Metallverbindungen enthalten, sodass sich der Abbau lohnt.",
+    "hint": "Erz ist meistens kein reines Metall."
+  },
+  {
+    "cat": "Metallgewinnung",
+    "q": "Was ist ein Erz?",
+    "a": "Ein Erz ist ein natürlich vorkommender Rohstoff, der Metallverbindungen enthält. Aus diesen Verbindungen kann man das Metall gewinnen.",
+    "hint": "Beispiel: Hämatit enthält Eisenoxid."
+  },
+  {
+    "cat": "Metallgewinnung",
+    "q": "Warum muss man viele Metalle aus Verbindungen gewinnen?",
+    "a": "Viele Metalle sind reaktionsfreudig und kommen in der Natur nicht rein vor. Sie sind zum Beispiel mit Sauerstoff als Metalloxide gebunden.",
+    "hint": "Unedle Metalle findet man meist nicht gediegen."
+  },
+  {
+    "cat": "Metallgewinnung",
+    "q": "Was bedeutet Reduktion bei der Metallgewinnung einfach erklärt?",
+    "a": "Bei vielen Schulbeispielen bedeutet Reduktion: Einem Metalloxid wird Sauerstoff entzogen. Dadurch entsteht aus der Metallverbindung das Metall.",
+    "hint": "Metalloxid → Metall."
+  },
+  {
+    "cat": "Metallgewinnung",
+    "q": "Wie kann Eisen aus Eisenoxid gewonnen werden?",
+    "a": "Eisenoxid wird im Hochofen mit Kohlenstoff beziehungsweise Kohlenstoffmonoxid reduziert. Dabei entsteht Eisen; außerdem entstehen Kohlenstoffdioxid oder Kohlenstoffmonoxid.",
+    "hint": "Vereinfacht: Eisenoxid + Kohlenstoff → Eisen + Kohlenstoffdioxid."
+  },
+  {
+    "cat": "Metallgewinnung",
+    "q": "Warum braucht man bei der Metallgewinnung viel Energie?",
+    "a": "Die Bindungen in Metallverbindungen müssen gelöst oder umgebaut werden. Außerdem sind oft hohe Temperaturen nötig, zum Beispiel im Hochofen oder bei der Elektrolyse.",
+    "hint": "Deshalb ist Recycling meistens viel energiesparender."
+  },
+  {
+    "cat": "Metallgewinnung",
+    "q": "Welche Metalle kommen manchmal gediegen, also rein, in der Natur vor?",
+    "a": "Zum Beispiel Gold, Silber und Platin. Sie sind sehr edel und reagieren nur wenig mit anderen Stoffen.",
+    "hint": "Gediegen = als Element, nicht als Verbindung."
+  },
+  {
+    "cat": "Redox & Sauerstoff",
+    "q": "Was bedeutet Oxidation im einfachen Sauerstoff-Modell?",
+    "a": "Oxidation bedeutet: Ein Stoff nimmt Sauerstoff auf. Wenn Magnesium verbrennt, entsteht Magnesiumoxid.",
+    "hint": "Magnesium + Sauerstoff → Magnesiumoxid."
+  },
+  {
+    "cat": "Redox & Sauerstoff",
+    "q": "Was bedeutet Reduktion im einfachen Sauerstoff-Modell?",
+    "a": "Reduktion bedeutet: Ein Stoff gibt Sauerstoff ab oder einem Stoff wird Sauerstoff entzogen. Das ist bei der Gewinnung vieler Metalle aus Metalloxiden wichtig.",
+    "hint": "Kupferoxid + Kohlenstoff → Kupfer + Kohlenstoffdioxid."
+  },
+  {
+    "cat": "Redox & Sauerstoff",
+    "q": "Was ist eine Redoxreaktion?",
+    "a": "Eine Redoxreaktion ist eine Reaktion, bei der Oxidation und Reduktion gleichzeitig ablaufen. Ein Stoff nimmt Sauerstoff auf, ein anderer gibt Sauerstoff ab.",
+    "hint": "Später kann man Redox auch über Elektronen erklären."
+  },
+  {
+    "cat": "Redox & Sauerstoff",
+    "q": "Was bedeutet Affinität zu Sauerstoff?",
+    "a": "Die Affinität zu Sauerstoff beschreibt, wie stark ein Stoff mit Sauerstoff reagieren möchte. Magnesium hat zum Beispiel eine größere Sauerstoffaffinität als Kupfer.",
+    "hint": "Hohe Affinität = reagiert leicht mit Sauerstoff."
+  },
+  {
+    "cat": "Redox & Sauerstoff",
+    "q": "Warum brennt Eisenwolle besser als ein Eisennagel?",
+    "a": "Eisenwolle ist sehr fein zerteilt und hat eine große Oberfläche. Dadurch kann Sauerstoff besser angreifen und die Reaktion läuft schneller ab.",
+    "hint": "Zerteilungsgrad beeinflusst die Reaktionsgeschwindigkeit."
+  },
+  {
+    "cat": "Redox & Sauerstoff",
+    "q": "Was ist das Thermit-Verfahren?",
+    "a": "Beim Thermit-Verfahren reagiert Aluminium mit Eisenoxid. Aluminium entzieht dem Eisenoxid den Sauerstoff. Dabei entstehen Aluminiumoxid und flüssiges Eisen sowie sehr viel Wärme.",
+    "hint": "Aluminium ist hier das Reduktionsmittel."
+  },
+  {
+    "cat": "Redox & Sauerstoff",
+    "q": "Warum rostet Aluminium kaum, obwohl es reaktionsfreudig ist?",
+    "a": "Aluminium bildet schnell eine dünne, feste Oxidschicht. Diese Schicht schützt das darunterliegende Metall vor weiterer Reaktion mit Sauerstoff.",
+    "hint": "Schutzschicht = Passivierung."
+  },
+  {
+    "cat": "Rost & Korrosion",
+    "q": "Was braucht Eisen, damit Rost entsteht?",
+    "a": "Eisen rostet vor allem, wenn Sauerstoff und Wasser vorhanden sind. Salz kann das Rosten zusätzlich beschleunigen.",
+    "hint": "Sauerstoff + Wasser + Eisen → Rost."
+  },
+  {
+    "cat": "Rost & Korrosion",
+    "q": "Warum ist Rost gefährlich für Eisenbauteile?",
+    "a": "Rost ist porös und bröckelig. Er schützt das Eisen nicht, sondern lässt Wasser und Sauerstoff weiter eindringen. Das Bauteil wird geschwächt.",
+    "hint": "Aluminiumoxid schützt, Rost schützt nicht."
+  },
+  {
+    "cat": "Rost & Korrosion",
+    "q": "Nenne drei Möglichkeiten, Eisen vor Rost zu schützen.",
+    "a": "Man kann Eisen lackieren, einfetten, verzinken, verchromen oder Edelstahl verwenden. Ziel ist: Wasser und Sauerstoff fernhalten oder das Eisen elektrochemisch schützen.",
+    "hint": "Verzinken = Zinkschicht schützt Eisen."
+  },
+  {
+    "cat": "Rost & Korrosion",
+    "q": "Warum schützt Lack Eisen vor Rost?",
+    "a": "Lack bildet eine Barriere. Wasser und Sauerstoff kommen nicht direkt an das Eisen. Wird die Lackschicht beschädigt, kann es an der Stelle rosten.",
+    "hint": "Schutz nur, solange die Schicht dicht ist."
+  },
+  {
+    "cat": "Metalle & Wasser/Säure",
+    "q": "Was passiert, wenn Natrium in Wasser gegeben wird?",
+    "a": "Natrium reagiert sehr heftig mit Wasser. Es entstehen Natronlauge und Wasserstoffgas. Der Versuch ist gefährlich und wird nur als Lehrerversuch durchgeführt.",
+    "hint": "2 Na + 2 H₂O → 2 NaOH + H₂."
+  },
+  {
+    "cat": "Metalle & Wasser/Säure",
+    "q": "Welche Metalle reagieren besonders heftig mit Wasser?",
+    "a": "Vor allem Alkalimetalle wie Lithium, Natrium und Kalium reagieren heftig mit Wasser. Erdalkalimetalle wie Calcium reagieren weniger heftig.",
+    "hint": "Gruppe 1 im PSE ist besonders reaktiv."
+  },
+  {
+    "cat": "Metalle & Wasser/Säure",
+    "q": "Was passiert, wenn Zink mit Salzsäure reagiert?",
+    "a": "Zink löst sich langsam auf. Es entstehen Zinkchlorid und Wasserstoffgas. Den Wasserstoff kann man mit der Knallgasprobe nachweisen.",
+    "hint": "Zn + 2 HCl → ZnCl₂ + H₂."
+  },
+  {
+    "cat": "Metalle & Wasser/Säure",
+    "q": "Wie weist man Wasserstoffgas nach?",
+    "a": "Mit der Knallgasprobe: Man hält einen brennenden Holzspan an das Gas. Bei Wasserstoff hört man ein kurzes Plopp- oder Knallgeräusch.",
+    "hint": "Nur mit kleinen Gasmengen durchführen."
+  },
+  {
+    "cat": "Metalle & Wasser/Säure",
+    "q": "Welche Metalle reagieren nicht oder kaum mit Salzsäure?",
+    "a": "Edle Metalle wie Kupfer, Silber, Gold und Platin reagieren nicht mit verdünnter Salzsäure. Sie geben Elektronen weniger leicht ab.",
+    "hint": "Edle Metalle stehen in der Spannungsreihe weiter rechts/unten."
+  },
+  {
+    "cat": "Spannungsreihe",
+    "q": "Was ordnet die elektrochemische Spannungsreihe?",
+    "a": "Sie ordnet Metalle danach, wie leicht sie Elektronen abgeben und wie reaktionsfreudig sie sind. Unedle Metalle reagieren eher, edle Metalle reagieren weniger.",
+    "hint": "Unedel = reaktionsfreudig; edel = reaktionsträge."
+  },
+  {
+    "cat": "Spannungsreihe",
+    "q": "Was bedeutet unedles Metall?",
+    "a": "Ein unedles Metall gibt leicht Elektronen ab und reagiert häufig mit Sauerstoff, Wasser oder Säuren. Beispiele sind Magnesium, Zink, Eisen und Aluminium.",
+    "hint": "Unedle Metalle korrodieren eher."
+  },
+  {
+    "cat": "Spannungsreihe",
+    "q": "Was bedeutet edles Metall?",
+    "a": "Ein edles Metall reagiert nur schwer mit Sauerstoff oder Säuren. Beispiele sind Kupfer, Silber, Gold und Platin.",
+    "hint": "Gold bleibt lange glänzend."
+  },
+  {
+    "cat": "Spannungsreihe",
+    "q": "Welches Metall ist edler: Kupfer oder Zink?",
+    "a": "Kupfer ist edler als Zink. Zink gibt Elektronen leichter ab und kann Kupfer-Ionen zu Kupfer reduzieren.",
+    "hint": "Zink ist unedler und reaktionsfreudiger."
+  },
+  {
+    "cat": "Legierungen",
+    "q": "Was ist eine Legierung?",
+    "a": "Eine Legierung ist ein metallischer Werkstoff aus mindestens zwei Stoffen. Meist werden Metalle miteinander gemischt; manchmal ist auch ein Nichtmetall beteiligt.",
+    "hint": "Stahl enthält Eisen und Kohlenstoff."
+  },
+  {
+    "cat": "Legierungen",
+    "q": "Nenne drei bekannte Legierungen und ihre Bestandteile.",
+    "a": "Stahl: Eisen + Kohlenstoff. Bronze: Kupfer + Zinn. Messing: Kupfer + Zink.",
+    "hint": "Legierungen haben oft bessere Eigenschaften als reine Metalle."
+  },
+  {
+    "cat": "Legierungen",
+    "q": "Warum nutzt man Legierungen statt reiner Metalle?",
+    "a": "Legierungen können härter, stabiler, leichter formbar oder korrosionsbeständiger sein als reine Metalle. Eigenschaften lassen sich gezielt anpassen.",
+    "hint": "Werkstoffe werden für ihren Zweck optimiert."
+  },
+  {
+    "cat": "Legierungen",
+    "q": "Was ist Edelstahl?",
+    "a": "Edelstahl ist ein besonders reiner oder legierter Stahl. Rostfreier Edelstahl enthält meistens Chrom, das eine schützende Oxidschicht bildet.",
+    "hint": "Nicht jeder Edelstahl ist automatisch rostfrei, aber viele Alltags-Edelstähle sind es."
+  },
+  {
+    "cat": "Recycling & Nachhaltigkeit",
+    "q": "Warum ist Metallrecycling wichtig?",
+    "a": "Metallrecycling spart Rohstoffe, Energie und oft auch CO₂. Außerdem müssen weniger Erze abgebaut werden, was Landschaften und Umwelt schont.",
+    "hint": "Schrott ist ein wichtiger Rohstoff."
+  },
+  {
+    "cat": "Recycling & Nachhaltigkeit",
+    "q": "Warum ist Aluminiumrecycling besonders sinnvoll?",
+    "a": "Die Herstellung von Aluminium aus Erz braucht sehr viel elektrische Energie. Das Einschmelzen von Aluminium-Schrott benötigt deutlich weniger Energie.",
+    "hint": "Aluminium kommt häufig aus Bauxit."
+  },
+  {
+    "cat": "Recycling & Nachhaltigkeit",
+    "q": "Warum sollte man Metalle im Müll trennen?",
+    "a": "Getrennte Metalle können besser sortiert, eingeschmolzen und wiederverwendet werden. So bleiben wertvolle Rohstoffe im Kreislauf.",
+    "hint": "Dosen, Kabel und Schrott gehören nicht in den Restmüll."
+  },
+  {
+    "cat": "Alltag",
+    "q": "Warum wird Kupfer für elektrische Leitungen verwendet?",
+    "a": "Kupfer leitet elektrischen Strom sehr gut und lässt sich gut zu Drähten ziehen. Deshalb wird es häufig für Kabel verwendet.",
+    "hint": "Silber leitet noch besser, ist aber teurer."
+  },
+  {
+    "cat": "Alltag",
+    "q": "Warum wird Aluminium für Flugzeuge und Getränkedosen genutzt?",
+    "a": "Aluminium ist leicht, gut formbar und durch seine Oxidschicht relativ korrosionsbeständig. Deshalb eignet es sich für Leichtbau und Verpackungen.",
+    "hint": "Geringe Dichte ist ein wichtiger Vorteil."
+  },
+  {
+    "cat": "Alltag",
+    "q": "Warum besteht eine Bratpfanne oft aus Metall?",
+    "a": "Metalle leiten Wärme gut. Dadurch verteilt sich die Wärme vom Herd schnell auf den Pfannenboden.",
+    "hint": "Griffe sind oft aus Kunststoff oder Holz, weil diese schlechter leiten."
+  },
+  {
+    "cat": "Alltag",
+    "q": "Warum werden Münzen oft aus Legierungen hergestellt?",
+    "a": "Legierungen sind haltbarer, härter und nutzen sich langsamer ab als viele reine Metalle. Außerdem kann man Farbe und Kosten besser anpassen.",
+    "hint": "Münzmetalle sind ein möglicher Kontext im Rahmenlehrplan."
+  },
+  {
+    "cat": "PSE",
+    "q": "Wo stehen die meisten Metalle im Periodensystem?",
+    "a": "Die meisten Metalle stehen links und in der Mitte des Periodensystems. Nichtmetalle stehen eher rechts oben.",
+    "hint": "Die Treppenlinie trennt grob Metalle und Nichtmetalle."
+  },
+  {
+    "cat": "PSE",
+    "q": "Was sind Alkalimetalle? Nenne Beispiele.",
+    "a": "Alkalimetalle stehen in Gruppe 1 des Periodensystems. Beispiele sind Lithium, Natrium und Kalium. Sie sind sehr reaktionsfreudig.",
+    "hint": "Sie besitzen ein Außenelektron."
+  },
+  {
+    "cat": "PSE",
+    "q": "Was sind Erdalkalimetalle? Nenne Beispiele.",
+    "a": "Erdalkalimetalle stehen in Gruppe 2. Beispiele sind Magnesium und Calcium. Sie sind reaktionsfreudig, aber meist weniger heftig als Alkalimetalle.",
+    "hint": "Sie besitzen zwei Außenelektronen."
+  },
+  {
+    "cat": "PSE",
+    "q": "Warum hilft das Periodensystem beim Thema Metalle?",
+    "a": "Im Periodensystem kann man erkennen, welche Elemente Metalle sind und welche ähnliche Eigenschaften besitzen. Elemente einer Gruppe haben oft ähnliches Reaktionsverhalten.",
+    "hint": "PSE = Ordnungssystem der Elemente."
+  }
+];
+
+const CAT_COLORS = {
+  "Eigenschaften": {
+    "bg": "#E1F5EE",
+    "color": "#0F6E56"
+  },
+  "Metallbindung": {
+    "bg": "#EEF2FF",
+    "color": "#4742A0"
+  },
+  "Metallgewinnung": {
+    "bg": "#E6F1FB",
+    "color": "#185FA5"
+  },
+  "Redox & Sauerstoff": {
+    "bg": "#FAECE7",
+    "color": "#993C1D"
+  },
+  "Rost & Korrosion": {
+    "bg": "#FBEAF0",
+    "color": "#993556"
+  },
+  "Metalle & Wasser/Säure": {
+    "bg": "#FAEEDA",
+    "color": "#854F0B"
+  },
+  "Spannungsreihe": {
+    "bg": "#FBEAF0",
+    "color": "#993556"
+  },
+  "Legierungen": {
+    "bg": "#EEEDFE",
+    "color": "#534AB7"
+  },
+  "Recycling & Nachhaltigkeit": {
+    "bg": "#EAF3DE",
+    "color": "#3B6D11"
+  },
+  "Alltag": {
+    "bg": "#E1F5EE",
+    "color": "#0F6E56"
+  },
+  "PSE": {
+    "bg": "#E6F1FB",
+    "color": "#185FA5"
+  }
+};
+
+const CATS = [...new Set(ALL_CARDS.map(c=>c.cat))];
+let activeCats = new Set(CATS);
+let deck = [];
+let idx = 0;
+let isFlipped = false;
+let status = {};
+
+function buildDeck() {
+  deck = ALL_CARDS.filter(c=>activeCats.has(c.cat));
+  idx = 0;
+  isFlipped = false;
+  document.getElementById('cardInner').classList.remove('flipped');
+  document.getElementById('knownRow').style.visibility='hidden';
+  renderCard();
+}
+
+function shuffle() {
+  for(let i=deck.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [deck[i],deck[j]]=[deck[j],deck[i]];
+  }
+  idx = 0;
+  isFlipped = false;
+  document.getElementById('cardInner').classList.remove('flipped');
+  document.getElementById('knownRow').style.visibility='hidden';
+  renderCard();
+}
+
+function flipCard() {
+  isFlipped = !isFlipped;
+  document.getElementById('cardInner').classList.toggle('flipped', isFlipped);
+  document.getElementById('knownRow').style.visibility = isFlipped ? 'visible' : 'hidden';
+}
+
+function navigate(dir) {
+  idx = Math.max(0, Math.min(deck.length-1, idx+dir));
+  isFlipped = false;
+  document.getElementById('cardInner').classList.remove('flipped');
+  document.getElementById('knownRow').style.visibility='hidden';
+  renderCard();
+}
+
+function markCard(known) {
+  const key = deck[idx].q;
+  status[key] = known ? 'known' : 'unknown';
+  updateStats();
+  if(idx < deck.length-1) setTimeout(()=>navigate(1), 300);
+}
+
+function updateStats() {
+  let k=0,u=0;
+  deck.forEach(c=>{ const s=status[c.q]; if(s==='known')k++; else if(s==='unknown')u++; });
+  const open = deck.length - k - u;
+  document.getElementById('knownCount').textContent = k;
+  document.getElementById('unknownCount').textContent = u;
+  document.getElementById('openCount').textContent = open;
+  const pct = deck.length ? Math.round((k/deck.length)*100) : 0;
+  document.getElementById('progFill').style.width = pct+'%';
+  document.getElementById('progText').textContent = pct+' %';
+}
+
+function renderCard() {
+  if(!deck.length) {
+    document.getElementById('questionText').textContent='Keine Karte in dieser Kategorie.';
+    document.getElementById('answerText').textContent='';
+    document.getElementById('hintText').textContent='';
+    document.getElementById('catLabel').textContent='';
+    document.getElementById('cardCounter').textContent='0 / 0';
+    document.getElementById('prevBtn').disabled=true;
+    document.getElementById('nextBtn').disabled=true;
+    return;
+  }
+  const card = deck[idx];
+  const col = CAT_COLORS[card.cat] || {bg:'#E1F5EE',color:'#0F6E56'};
+  document.getElementById('questionText').textContent=card.q;
+  document.getElementById('answerText').textContent=card.a;
+  document.getElementById('hintText').textContent=card.hint ? '💡 '+card.hint : '';
+  const lbl = document.getElementById('catLabel');
+  lbl.textContent=card.cat;
+  lbl.style.background=col.bg;
+  lbl.style.color=col.color;
+  document.getElementById('cardCounter').textContent=(idx+1)+' / '+deck.length;
+  document.getElementById('prevBtn').disabled=idx===0;
+  document.getElementById('nextBtn').disabled=idx===deck.length-1;
+  updateStats();
+}
+
+function buildCatBtns() {
+  const cont = document.getElementById('catControls');
+  const allBtn = document.createElement('button');
+  allBtn.type='button';
+  allBtn.className='cat-btn active';
+  allBtn.id='cat-all';
+  allBtn.textContent='Alle';
+  allBtn.onclick=()=>{ activeCats=new Set(CATS); document.querySelectorAll('.cat-btn').forEach(b=>{b.classList.toggle('active',b.id==='cat-all'||b.dataset.cat&&activeCats.has(b.dataset.cat))}); buildDeck(); };
+  cont.appendChild(allBtn);
+  CATS.forEach(cat=>{
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='cat-btn active';
+    btn.dataset.cat=cat;
+    btn.textContent=cat;
+    btn.onclick=()=>{
+      if(activeCats.has(cat)&&activeCats.size>1) activeCats.delete(cat);
+      else activeCats.add(cat);
+      btn.classList.toggle('active',activeCats.has(cat));
+      const allAct = CATS.every(c=>activeCats.has(c));
+      document.getElementById('cat-all').classList.toggle('active',allAct);
+      buildDeck();
+    };
+    cont.appendChild(btn);
+  });
+}
+
+buildCatBtns();
+shuffle();
+</script>
